@@ -1,0 +1,182 @@
+# PS1 with color for git
+export PS1='\[\e]0;\w\a\]\n\[\e[32m\]\u@\h \[\e[33m\]\w \[\e[31m\]$(__git_ps1 " (%s)")\[\e[0m\]\$ '
+
+#####################
+# for screen
+#####################
+if [ "$TERM" = "screen" ]; then
+  screen_set_window_title () {
+    local HPWD="$PWD"
+    case $HPWD in
+      $HOME) HPWD="~";;
+      $HOME/*) HPWD="~${HPWD#$HOME}";;
+    esac
+    printf '\ek%s\e\\' "$HPWD"
+  }
+  PROMPT_COMMAND="screen_set_window_title; $PROMPT_COMMAND"
+  export PS1='\n--> '
+fi
+
+# KSH Include time in prompt.
+#export SECONDS="$(date '+3600*%H+60*%M+%S')"
+#typeset -Z2 _h; typeset -Z2 _m ; typeset -Z2 _s # 2 digits, zero padded
+# hours, minutes and seconds...
+#_hh="(SECONDS/3600)%24"
+#_mm="(SECONDS/60)%60"
+#_ss="(SECONDS)%60"
+#_time='${_x[(_m=_mm)==(_h=_hh)==(_s=_ss)]}$_h:$_m:$_s'
+
+function gbcustrun {
+if [ ! -f $1 ];then
+    echo "Error: unable to open $1!"
+    return 1
+else
+    for i in `seq 1 9`
+    do
+        echo "********************** GBCUST$i ******************************"
+        sqlplus -S arborsv/arborsv@gbcust$i @$1
+        rc_code=$?
+        if (( $? != 0 ));then
+           exit $?
+        fi
+    done
+fi
+}
+
+#replace cd with a new cd function, which has the ability to keep the history
+#use 'cd--' to view the history and 'cd -1' to access the first entry in the list
+ cd_func ()
+ {
+   local x2 the_new_dir adir index
+   local -i cnt
+ 
+   if [[ $1 ==  "--" ]]; then
+     dirs -v
+     return 0
+   fi
+ 
+   the_new_dir=$1
+   [[ -z $1 ]] && the_new_dir=$HOME
+ 
+   if [[ ${the_new_dir:0:1} == '-' ]]; then
+     #
+     # Extract dir N from dirs
+     index=${the_new_dir:1}
+     [[ -z $index ]] && index=1
+     adir=$(dirs +$index)
+     [[ -z $adir ]] && return 1
+     the_new_dir=$adir
+   fi
+ 
+   #
+   # '~' has to be substituted by ${HOME}
+   [[ ${the_new_dir:0:1} == '~' ]] && the_new_dir="${HOME}${the_new_dir:1}"
+ 
+   #
+   # Now change to the new dir and add to the top of the stack
+   pushd "${the_new_dir}" > /dev/null
+   [[ $? -ne 0 ]] && return 1
+   the_new_dir=$(pwd)
+ 
+   #
+   # Trim down everything beyond 11th entry
+   popd -n +11 2>/dev/null 1>/dev/null
+ 
+   #
+   # Remove any other occurence of this dir, skipping the top of the stack
+   for ((cnt=1; cnt <= 10; cnt++)); do
+     x2=$(dirs +${cnt} 2>/dev/null)
+     [[ $? -ne 0 ]] && return 0
+     [[ ${x2:0:1} == '~' ]] && x2="${HOME}${x2:1}"
+     if [[ "${x2}" == "${the_new_dir}" ]]; then
+       popd -n +$cnt 2>/dev/null 1>/dev/null
+       cnt=cnt-1
+     fi
+   done
+ 
+   return 0
+ }
+ 
+ alias cd=cd_func
+
+########################################
+## welcome banner
+########################################
+clear
+
+hour=`date +%H`
+#config the timezone you are in
+# positive number means the east, negative number means the west
+# please pay attention to the day light saving hour
+tz="+8"
+
+tz_hour_temp=`echo "$hour $tz + 7"|bc`
+if (( $tz_hour_temp >= 24 ));then
+    (( tz_hour = $tz_hour_temp - 24 ))
+elif (( $tz_hour_temp < 0 ));then
+    (( tz_hour = $tz_hour_temp + 24 ))
+else
+    tz_hour=$tz_hour_temp
+fi
+
+#cat << EOF
+# __    __     _                            _                _    _
+#/ / /\ \ \___| | ___ ___  _ __ ___   ___  | |__   __ _  ___| | _| |
+#\ \/  \/ / _ \ |/ __/ _ \| '_ \` _ \ / _ \ | '_ \ / _\` |/ __| |/ / |
+# \  /\  /  __/ | (_| (_) | | | | | |  __/ | |_) | (_| | (__|   <|_|
+#  \/  \/ \___|_|\___\___/|_| |_| |_|\___| |_.__/ \__,_|\___|_|\_(_)
+#EOF
+
+echo "Welcome back"
+if (( $tz_hour >= 0 && $tz_hour < 6 ));then
+    echo "and good night,dude."
+elif (( $tz_hour >= 6 && $tz_hour < 12 ));then
+    echo "and good morning, man."
+elif (( $tz_hour >= 12 && $tz_hour < 18 ));then
+    echo "and good afternoon, man."
+elif (( $tz_hour >= 18 && $tz_hour < 24 ));then
+    echo "and good evening, man."
+else
+    echo "You are into Extra-dimensional space!"
+fi
+echo ""
+
+## select prompt when logon
+function go {
+PS3='Please enter your choice: '
+servers=("slcgbrrlogs100.slc.ebay.com" 
+"phximdsas02.phx.ebay.com" 
+"slcbaasapp01.slc.ebay.com" 
+"slcbaasapp05.slc.ebay.com" 
+"baas.vip.ebay.com" 
+"gbbat1.vip.ebay.com" 
+"gbbat2.vip.ebay.com" 
+"gbbat3.vip.ebay.com" 
+"gbbat4.vip.ebay.com" 
+"gbbat5.vip.ebay.com" 
+"gbbat6.vip.ebay.com" 
+"gbbat7.vip.ebay.com" 
+"gbbat8.vip.ebay.com" 
+"gbbat9.vip.ebay.com" 
+"slcpgwset100.slc.ebay.com" 
+"slcpgwset101.slc.ebay.com" 
+"slcpgwset102.slc.ebay.com" 
+"slcgbpay100.slc.ebay.com" 
+"slcgbpay101.slc.ebay.com" 
+"Quit")
+select opt in "${servers[@]}"
+do
+    case $opt in
+        "Quit")
+            echo "Exiting..."
+            break
+            ;;
+        *)
+            echo "connecting to ${opt}..."
+            ssh ${opt}
+            ;;
+    esac
+done
+}
+
+go
