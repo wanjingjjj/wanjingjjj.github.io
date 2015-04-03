@@ -1,0 +1,3 @@
+* More elegant way to grep from ps command
+  - ps ux | awk '/name/ && !/awk/ {print $2}'
+  - ps aux | grep '[t]erminal'
